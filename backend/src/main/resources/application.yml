@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: iotManagement
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/iot_db
+    username: iot_user
+    password: iot_pass
+  flyway:
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    enabled: true
+    table: versions
+  jpa:
+    database: postgresql
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+
+jwt:
+  secret: OIUHS1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ_i7931d8917zb6y9say937me0923du03adsh9
+  expiration: 1800
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+  api-docs:
+    path: /v3/api-docs
