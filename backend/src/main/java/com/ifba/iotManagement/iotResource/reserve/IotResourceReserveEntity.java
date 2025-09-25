@@ -31,6 +31,17 @@ public class IotResourceReserveEntity extends AbstractEntity {
     public IotResourceReserveEntity() {
         super();
     }
+    
+    public void finishReserve() {
+        this.endTime = Instant.now();
+        this.active = false;
+        this.touch();
+    }
+    
+    public void updateActive(Boolean active) {
+        this.active = active;
+        this.touch();
+    }
 
     @Override
     protected void validate() {

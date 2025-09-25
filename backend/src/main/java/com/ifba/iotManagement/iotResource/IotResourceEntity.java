@@ -1,12 +1,9 @@
 package com.ifba.iotManagement.iotResource;
 
 import com.ifba.iotManagement.shared.AbstractEntity;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "iot_resources")
@@ -16,13 +13,18 @@ public class IotResourceEntity extends AbstractEntity {
     private String resourceId;
     private String name;
     private String type;
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Enumerated(EnumType.STRING)
     private IotResourceStatus status;
     private Long timeoutUsageInMinutes;
     private Boolean lockedForAdmin;
 
     public IotResourceEntity() {
         super();
+    }
+    
+    public void updateStatus(IotResourceStatus newStatus) {
+        this.status = newStatus;
+        this.touch();
     }
 
     @Override

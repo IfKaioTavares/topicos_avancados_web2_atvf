@@ -1,12 +1,9 @@
 package com.ifba.iotManagement.user;
 
 import com.ifba.iotManagement.shared.AbstractEntity;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Entity
 @Getter
@@ -15,7 +12,7 @@ import org.hibernate.type.SqlTypes;
 public class UserEntity extends AbstractEntity {
     private  String username;
     private String passwordHash;
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Enumerated(EnumType.STRING)
     private UserRole role;
 
     public UserEntity() {

@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: iotManagement
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: 
+  flyway:
+    enabled: false # Desabilitar Flyway nos testes
+  jpa:
+    database: h2
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        type:
+          preferred_jdbc_type_for_enum: VARCHAR
+
+jwt:
+  secret: OIUHS1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ_i7931d8917zb6y9say937me0923du03adsh9
+  expiration: 1800
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    com.ifba.iotManagement: DEBUG
