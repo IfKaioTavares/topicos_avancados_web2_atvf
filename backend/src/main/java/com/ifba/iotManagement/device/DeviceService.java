@@ -36,6 +36,9 @@ public class DeviceService {
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Resource not found with resourceId: " + statusUpdate.resourceId()));
             
+            // Verificar se é primeira conexão e dispositivo precisa ser ativado
+            boolean wasActivated = handleFirstConnection(resource, statusUpdate);
+            
             // Mapear status do dispositivo para enum
             IotResourceStatus newStatus;
             try {
@@ -57,12 +60,20 @@ public class DeviceService {
                         resource.getPublicId(),
                         resource.getName(),
                         AuditResult.SUCCESS,
-                        String.format("Device updated status from %s to %s at %s", 
-                                oldStatus, newStatus, statusUpdate.timestamp())
+                        String.format("Device updated status from %s to %s at %s%s", 
+                                oldStatus, newStatus, statusUpdate.timestamp(),
+                                wasActivated ? " (Device auto-activated)" : "")
                 );
                 
-                logger.info("Device status updated for resource {} from {} to {}", 
-                        statusUpdate.resourceId(), oldStatus, newStatus);
+                logger.info("Device status updated for resource {} from {} to {}{}",
+                        statusUpdate.resourceId(), oldStatus, newStatus,
+                        wasActivated ? " (auto-activated)" : "");
+            } else if (wasActivated) {
+                // Apenas ativação sem mudança de status
+                resourceRepository.save(resource);
+                
+                logger.info("Device auto-activated for resource {} without status change", 
+                        statusUpdate.resourceId());
             }
             
         } catch (Exception e) {
@@ -139,6 +150,46 @@ public class DeviceService {
             );
             throw e;
         }
+    }
+    
+    /**
+     * Trata primeira conexão do dispositivo, ativando-o automaticamente se necessário
+     * @param resource Recurso IoT
+     * @param statusUpdate Dados de status do dispositivo
+     * @return true se o dispositivo foi ativado, false caso contrário
+     */
+    private boolean handleFirstConnection(IotResourceEntity resource, DeviceStatusUpdateDto statusUpdate) {
+        // Verificar se é primeira conexão
+        Boolean isFirstConnection = statusUpdate.firstConnection();
+        if (isFirstConnection == null || !isFirstConnection) {
+            return false; // Não é primeira conexão
+        }
+        
+        // Verificar se dispositivo está inativo (precisa ser ativado)
+        if (resource.getStatus() == IotResourceStatus.INACTIVE) {
+            logger.info("First connection detected for resource {} - Auto-activating device", 
+                    statusUpdate.resourceId());
+            
+            // Ativar dispositivo mudando status para FREE
+            resource.updateStatus(IotResourceStatus.FREE);
+            
+            // Log de auditoria específico para ativação
+            auditService.logSystemAction(
+                    AuditAction.DEVICE_STATUS_UPDATE,
+                    resource.getPublicId(),
+                    resource.getName(),
+                    AuditResult.SUCCESS,
+                    String.format("Device auto-activated on first connection at %s", 
+                            statusUpdate.timestamp())
+            );
+            
+            return true;
+        }
+        
+        // Dispositivo já estava ativo
+        logger.debug("First connection detected for resource {} but device is already active (status: {})", 
+                statusUpdate.resourceId(), resource.getStatus());
+        return false;
     }
     
     private IotResourceStatus mapDeviceStatusToEnum(String deviceStatus) {

@@ -13,6 +13,8 @@ public record DeviceStatusUpdateDto(
         String status,
         
         @NotNull(message = "Timestamp cannot be null")
-        Instant timestamp
+        Instant timestamp,
+        
+        Boolean firstConnection // Flag para indicar primeira conexão do dispositivo
 ) {
 }
