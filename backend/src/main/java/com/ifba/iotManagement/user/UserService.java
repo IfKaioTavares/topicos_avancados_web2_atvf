@@ -4,11 +4,12 @@ import com.ifba.iotManagement.shared.exceptions.ResourceAlreadyExistsException;
 import com.ifba.iotManagement.shared.exceptions.ResourceNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
 @Service
-public final class UserService {
+public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -17,6 +18,7 @@ public final class UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    @Transactional
     public UserDto createUser(CreateUserRequestDto dto) {
         userRepository.findByUsername(dto.username()).ifPresent(user -> {
             throw new ResourceAlreadyExistsException("Username já está em uso");

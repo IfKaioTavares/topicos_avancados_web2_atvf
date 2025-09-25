@@ -10,12 +10,13 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public final class AuthService {
+public class AuthService {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -26,6 +27,7 @@ public final class AuthService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    @Transactional
     public LoginResponseDto login(LoginRequestDto loginRequestDto) {
         var user = userRepository.findByUsername(loginRequestDto.username())
                 .orElseThrow(() -> new InvalidCredentialsException("Username ou senha inválidos"));
