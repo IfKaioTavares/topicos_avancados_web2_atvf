@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+
 @Entity
 @Table(name = "iot_resources")
 @Getter
@@ -13,8 +14,10 @@ public class IotResourceEntity extends AbstractEntity {
     private String resourceId;
     private String name;
     private String type;
+    
     @Enumerated(EnumType.STRING)
     private IotResourceStatus status;
+    
     private Long timeoutUsageInMinutes;
     private Boolean lockedForAdmin;
 

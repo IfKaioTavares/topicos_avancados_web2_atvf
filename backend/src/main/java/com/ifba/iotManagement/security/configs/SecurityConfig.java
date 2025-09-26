@@ -17,8 +17,12 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import javax.crypto.spec.SecretKeySpec;
+import java.util.Arrays;
 
 
 @Configuration
@@ -48,6 +52,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests( auth -> auth
                     .requestMatchers(createPath("/auth/**")).permitAll()
                     .requestMatchers(docsAuth).permitAll()
@@ -70,5 +75,51 @@ public class SecurityConfig {
     JwtDecoder jwtDecoder() {
         final SecretKeySpec secretKey = new SecretKeySpec(jwtSecretKey.getBytes(), JWSAlgorithm.HS256.getName());
         return NimbusJwtDecoder.withSecretKey(secretKey).build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        
+        // Permitir origens específicas (adicione mais conforme necessário)
+        configuration.setAllowedOrigins(Arrays.asList(
+            "http://localhost:3000",  // React dev server padrão
+            "http://localhost:5173",  // Vite dev server padrão
+            "http://localhost:5174",  // Vite dev server alternativo
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174"
+        ));
+        
+        // Permitir todos os métodos HTTP necessários
+        configuration.setAllowedMethods(Arrays.asList(
+            "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"
+        ));
+        
+        // Permitir todos os headers necessários
+        configuration.setAllowedHeaders(Arrays.asList(
+            "Authorization", 
+            "Content-Type", 
+            "X-Requested-With",
+            "Accept",
+            "Origin",
+            "Access-Control-Request-Method",
+            "Access-Control-Request-Headers"
+        ));
+        
+        // Permitir credenciais (cookies, authorization headers)
+        configuration.setAllowCredentials(true);
+        
+        // Configurar headers expostos
+        configuration.setExposedHeaders(Arrays.asList(
+            "Access-Control-Allow-Origin",
+            "Access-Control-Allow-Credentials"
+        ));
+        
+        // Aplicar configuração para todas as rotas
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        
+        return source;
     }
 }
