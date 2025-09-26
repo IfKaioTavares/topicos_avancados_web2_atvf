@@ -14,4 +14,6 @@ public interface IotResourceRepository extends BaseRepository<IotResourceEntity>
     Optional<IotResourceEntity> findByPublicIdAndDeletedIsFalse(UUID publicId);
     List<IotResourceEntity> findAllByDeletedIsFalse();
     long countByDeletedIsFalse();
+    long countByDeletedIsFalseAndLockedForAdminIsFalse();
+    long countByStatusAndDeletedIsFalse(IotResourceStatus status);
 }

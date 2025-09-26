@@ -11,8 +11,8 @@ import {
 
 const ResourceCard = ({ resource, userReserve, onReserve, onRelease }) => {
   const isAvailable = resource.status === 'FREE';
-  const isOccupied = resource.status === 'OCCUPIED';
-  const isUnavailable = resource.status === 'UNAVAILABLE';
+  const isOccupied = resource.status === 'RESERVED'; // Corrigido: backend usa RESERVED, não OCCUPIED
+  const isUnavailable = resource.status === 'INACTIVE'; // Corrigido: backend usa INACTIVE, não UNAVAILABLE
   const hasUserReserve = Boolean(userReserve);
 
   const status = (() => {
@@ -23,11 +23,17 @@ const ResourceCard = ({ resource, userReserve, onReserve, onRelease }) => {
           icon: <Wifi size={18} color="#16a34a" />,
           pillClass: 'status-pill status-pill--free',
         };
-      case 'OCCUPIED':
+      case 'RESERVED':
         return {
           label: 'Ocupado',
           icon: <WifiOff size={18} color="#dc2626" />,
           pillClass: 'status-pill status-pill--occupied',
+        };
+      case 'INACTIVE':
+        return {
+          label: 'Indisponível',
+          icon: <AlertTriangle size={18} color="#b45309" />,
+          pillClass: 'status-pill status-pill--unavailable',
         };
       default:
         return {
@@ -40,9 +46,21 @@ const ResourceCard = ({ resource, userReserve, onReserve, onRelease }) => {
 
   const formatDate = (value) => {
     if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return date.toLocaleString('pt-BR');
+    try {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return 'Data inválida';
+      return date.toLocaleString('pt-BR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    } catch (error) {
+      console.error('Erro ao formatar data:', error);
+      return 'Data inválida';
+    }
   };
 
   const handleReserveClick = () => {
@@ -58,9 +76,6 @@ const ResourceCard = ({ resource, userReserve, onReserve, onRelease }) => {
       <div className="resource-card__header">
         <div className="stack-xs" style={{ flex: 1 }}>
           <h3 className="resource-card__title">{resource.name}</h3>
-          {resource.description && (
-            <p className="resource-card__description">{resource.description}</p>
-          )}
         </div>
         <span className={status.pillClass}>
           {status.icon}
@@ -88,11 +103,11 @@ const ResourceCard = ({ resource, userReserve, onReserve, onRelease }) => {
           </span>
           <div className="reserve-banner__meta">
             <span className="flex" style={{ gap: '0.35rem', alignItems: 'center' }}>
-              <Calendar size={14} /> Desde: {formatDate(userReserve.createdAt)}
+              <Calendar size={14} /> Desde: {formatDate(userReserve.startTime)}
             </span>
-            {userReserve.expiresAt && (
+            {userReserve.predictedEndTime && (
               <span className="flex" style={{ gap: '0.35rem', alignItems: 'center' }}>
-                <Clock size={14} /> Expira: {formatDate(userReserve.expiresAt)}
+                <Clock size={14} /> Expira: {formatDate(userReserve.predictedEndTime)}
               </span>
             )}
           </div>

@@ -140,8 +140,11 @@ public class IotResourceReserveService {
         UserEntity user = userRepository.findByPublicIdAndDeletedIsFalse(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
+        Instant now = Instant.now();
         return reserveRepository.findByUserIdAndActiveIsTrueAndDeletedIsFalse(user.getId())
                 .stream()
+                .filter(reserve -> reserve.getEndTime() == null && 
+                                 (reserve.getPredictedEndTime() == null || reserve.getPredictedEndTime().isAfter(now)))
                 .map(ReserveDto::fromEntity)
                 .toList();
     }

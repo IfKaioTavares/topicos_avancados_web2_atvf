@@ -5,42 +5,28 @@ class DeviceSimulator {
         this.resourceId = config.resourceId;
         this.timeoutDurationMinutes = config.timeoutDurationMinutes;
         this.backendUrl = config.backendUrl;
-        this.statusIntervalSeconds = config.statusIntervalSeconds;
-        
-        // Configurações de liberação automática
-        this.autoReleaseEnabled = config.autoReleaseEnabled;
-        this.autoReleaseProbability = config.autoReleaseProbability;
-        this.autoReleaseMinMinutes = config.autoReleaseMinMinutes;
         
         // Estado atual do dispositivo
-        this.currentStatus = 'FREE';  // FREE, RESERVED, INACTIVE
+        this.currentStatus = 'FREE';  // FREE, RESERVED
         this.reservedAt = null;
-        this.timeoutTimer = null;
+        this.predictedEndTime = null;
         this.statusInterval = null;
-        this.commandCheckInterval = null;
-        this.autoReleaseInterval = null;
-        this.isFirstStatusSent = false;
+        this.statusCheckInterval = null;
+        this.autoReleaseTimer = null;
+        this.isFirstConnection = true;
+        this.lastStatusSent = null; // Timestamp do último envio de status
         
         console.log(`🔧 Dispositivo ${this.resourceId} inicializado com timeout de ${this.timeoutDurationMinutes} minutos`);
-        
-        if (this.autoReleaseEnabled) {
-            console.log(`🎲 Liberação automática ativada: ${(this.autoReleaseProbability * 100).toFixed(1)}% de chance (mín: ${this.autoReleaseMinMinutes}min)`);
-        }
     }
     
     start() {
         console.log(`▶️  Iniciando simulador para recurso ${this.resourceId}...`);
         
-        // Iniciar envio periódico de status
+        // Enviar dados periodicamente para o backend (a cada 30 segundos)
         this.startStatusReporting();
         
-        // Iniciar verificação periódica de comandos
-        this.startCommandChecking();
-        
-        // Iniciar liberação automática se habilitada
-        if (this.autoReleaseEnabled) {
-            this.startAutoReleaseChecking();
-        }
+        // Perguntar periodicamente se está livre ou não (a cada 15 segundos)
+        this.startStatusChecking();
         
         console.log(`✅ Simulador ativo! Status inicial: ${this.currentStatus}`);
     }
@@ -52,58 +38,47 @@ class DeviceSimulator {
             clearInterval(this.statusInterval);
         }
         
-        if (this.commandCheckInterval) {
-            clearInterval(this.commandCheckInterval);
+        if (this.statusCheckInterval) {
+            clearInterval(this.statusCheckInterval);
         }
         
-        if (this.autoReleaseInterval) {
-            clearInterval(this.autoReleaseInterval);
-        }
-        
-        if (this.timeoutTimer) {
-            clearTimeout(this.timeoutTimer);
+        if (this.autoReleaseTimer) {
+            clearTimeout(this.autoReleaseTimer);
         }
         
         console.log('✅ Simulador parado');
     }
     
     startStatusReporting() {
-        // Enviar status imediatamente
-        this.sendStatusUpdate();
+        // Enviar dados imediatamente
+        this.sendDeviceData();
         
-        // Configurar envio periódico
+        // Configurar envio periódico a cada 30 segundos
         this.statusInterval = setInterval(() => {
-            this.sendStatusUpdate();
-        }, this.statusIntervalSeconds * 1000);
+            this.sendDeviceData();
+        }, 30000);
         
-        console.log(`📡 Envio de status configurado a cada ${this.statusIntervalSeconds} segundos`);
+        console.log(`📡 Envio de dados do dispositivo configurado a cada 30 segundos`);
     }
     
-    startCommandChecking() {
-        // Verificar comandos a cada 10 segundos
-        this.commandCheckInterval = setInterval(() => {
-            this.checkForCommands();
-        }, 10000);
+    startStatusChecking() {
+        // Perguntar ao backend se está livre ou não a cada 15 segundos
+        this.statusCheckInterval = setInterval(() => {
+            this.askBackendStatus();
+        }, 15000);
         
-        console.log('🔍 Verificação de comandos ativada (a cada 10 segundos)');
+        console.log('❓ Verificação de status no backend ativada (a cada 15 segundos)');
     }
     
-    startAutoReleaseChecking() {
-        // Verificar liberação automática a cada 2 minutos
-        this.autoReleaseInterval = setInterval(() => {
-            this.checkAutoRelease();
-        }, 120000); // 2 minutos
-        
-        console.log('🎲 Verificação de liberação automática ativada (a cada 2 minutos)');
-    }
-    
-    async sendStatusUpdate() {
+    async sendDeviceData() {
         try {
             const payload = {
                 resourceId: this.resourceId,
                 status: this.currentStatus,
                 timestamp: new Date().toISOString(),
-                firstConnection: !this.isFirstStatusSent // Flag para ativação no backend
+                firstConnection: this.isFirstConnection,
+                reservedAt: this.reservedAt,
+                predictedEndTime: this.predictedEndTime
             };
             
             const response = await axios.post(
@@ -113,188 +88,179 @@ class DeviceSimulator {
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    timeout: 5000 // 5 segundos de timeout
+                    timeout: 5000
                 }
             );
             
-            if (!this.isFirstStatusSent) {
+            if (this.isFirstConnection) {
                 console.log(`🔌 Primeira conexão realizada - dispositivo ativado no backend`);
-                this.isFirstStatusSent = true;
+                this.isFirstConnection = false;
             }
             
-            console.log(`📤 Status enviado: ${this.currentStatus} (${response.status})`);
+            // Registrar timestamp do envio
+            this.lastStatusSent = Date.now();
+            
+            console.log(`📤 Dados enviados: ${this.currentStatus} (${response.status})`);
             
         } catch (error) {
             if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-                console.error(`❌ Não foi possível conectar ao backend: ${this.backendUrl}`);
+                console.error(`❌ Erro ao conectar ao backend: ${this.backendUrl}`);
             } else if (error.response) {
-                console.error(`❌ Erro ao enviar status: ${error.response.status} - ${error.response.data}`);
+                console.error(`❌ Erro ao enviar dados: ${error.response.status} - ${error.response.data || ''}`);
             } else {
-                console.error(`❌ Erro ao enviar status: ${error.message}`);
+                console.error(`❌ Erro ao enviar dados: ${error.message}`);
             }
         }
     }
     
-    async checkForCommands() {
+    async askBackendStatus() {
         try {
-            // Verificar comando de reserva
-            const reserveResponse = await axios.get(
-                `${this.backendUrl}/api/v1/devices/${this.resourceId}/commands/reserve`,
+            const response = await axios.get(
+                `${this.backendUrl}/api/v1/devices/${this.resourceId}/status`,
                 { timeout: 3000 }
             );
             
-            if (reserveResponse.data && reserveResponse.data.command === 'RESERVE') {
-                this.executeReserveCommand();
+            const backendStatus = response.data.status;
+            const backendReserveDetails = response.data.reserveDetails;
+            
+            console.log(`📋 Status no backend: ${backendStatus} | Status local: ${this.currentStatus}`);
+            
+            // Só sincronizar se houver uma diferença significativa e não acabamos de enviar uma atualização
+            if (backendStatus !== this.currentStatus) {
+                // Evitar sync imediato após envio - aguardar um pouco
+                if (this.lastStatusSent && (Date.now() - this.lastStatusSent < 2000)) {
+                    console.log(`⏳ Aguardando estabilização após envio recente (${Date.now() - this.lastStatusSent}ms atrás)`);
+                    return;
+                }
+                
+                console.log(`🔄 Sincronizando status: ${this.currentStatus} → ${backendStatus}`);
+                this.currentStatus = backendStatus;
+                
+                if (backendStatus === 'RESERVED' && backendReserveDetails) {
+                    this.reservedAt = new Date(backendReserveDetails.startTime);
+                    this.predictedEndTime = new Date(backendReserveDetails.predictedEndTime);
+                    
+                    // Configurar auto-liberação baseada no tempo previsto
+                    this.scheduleAutoRelease();
+                    
+                    console.log(`🔒 Recurso reservado até: ${this.predictedEndTime.toLocaleString()}`);
+                } else if (backendStatus === 'FREE') {
+                    this.reservedAt = null;
+                    this.predictedEndTime = null;
+                    
+                    // Cancelar auto-liberação se existir
+                    if (this.autoReleaseTimer) {
+                        clearTimeout(this.autoReleaseTimer);
+                        this.autoReleaseTimer = null;
+                    }
+                    
+                    console.log(`🔓 Recurso liberado pelo backend`);
+                }
+            } else {
+                console.log(`✅ Status sincronizado: ${this.currentStatus}`);
             }
             
         } catch (error) {
-            // Se der 404, não há comando pendente, isso é normal
-            if (error.response && error.response.status !== 404) {
-                console.error(`❌ Erro ao verificar comando de reserva: ${error.response?.status}`);
+            if (error.response && error.response.status === 404) {
+                console.log(`⚠️  Recurso não encontrado no backend: ${this.resourceId}`);
+            } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+                console.error(`❌ Erro ao conectar ao backend: ${this.backendUrl}`);
+            } else {
+                console.error(`❌ Erro ao verificar status: ${error.response?.status || error.message}`);
             }
         }
+    }
+    
+    scheduleAutoRelease() {
+        // Cancelar timer anterior se existir
+        if (this.autoReleaseTimer) {
+            clearTimeout(this.autoReleaseTimer);
+        }
         
+        if (!this.predictedEndTime) return;
+        
+        const now = new Date();
+        const timeUntilAutoRelease = this.predictedEndTime.getTime() - now.getTime();
+        
+        if (timeUntilAutoRelease > 0) {
+            this.autoReleaseTimer = setTimeout(() => {
+                console.log(`⏰ AUTO-LIBERAÇÃO! Tempo previsto expirado.`);
+                this.performAutoRelease();
+            }, timeUntilAutoRelease);
+            
+            console.log(`⏰ Auto-liberação agendada para: ${this.predictedEndTime.toLocaleString()}`);
+        } else {
+            // Tempo já passou, liberar imediatamente
+            console.log(`⏰ AUTO-LIBERAÇÃO! Tempo previsto já expirou.`);
+            this.performAutoRelease();
+        }
+    }
+    
+    async performAutoRelease() {
+        console.log(`🔓 Executando auto-liberação do recurso ${this.resourceId}`);
+        
+        this.currentStatus = 'FREE';
+        this.reservedAt = null;
+        this.predictedEndTime = null;
+        
+        // Cancelar timer
+        if (this.autoReleaseTimer) {
+            clearTimeout(this.autoReleaseTimer);
+            this.autoReleaseTimer = null;
+        }
+        
+        // Notificar o backend sobre a auto-liberação
         try {
-            // Verificar comando de liberação
-            const releaseResponse = await axios.get(
-                `${this.backendUrl}/api/v1/devices/${this.resourceId}/commands/release`,
-                { timeout: 3000 }
+            await axios.post(
+                `${this.backendUrl}/api/v1/devices/${this.resourceId}/auto-release`,
+                {
+                    timestamp: new Date().toISOString(),
+                    reason: 'timeout_expired'
+                },
+                { timeout: 5000 }
             );
             
-            if (releaseResponse.data && releaseResponse.data.command === 'RELEASE') {
-                this.executeReleaseCommand();
-            }
+            console.log(`📤 Auto-liberação notificada ao backend`);
             
         } catch (error) {
-            // Se der 404, não há comando pendente, isso é normal
-            if (error.response && error.response.status !== 404) {
-                console.error(`❌ Erro ao verificar comando de liberação: ${error.response?.status}`);
-            }
-        }
-    }
-    
-    executeReserveCommand() {
-        if (this.currentStatus === 'FREE') {
-            this.currentStatus = 'RESERVED';
-            this.reservedAt = new Date();
-            
-            // Configurar timeout automático
-            this.setAutoTimeout();
-            
-            console.log(`🔒 Recurso RESERVADO às ${this.reservedAt.toLocaleString()}`);
-            console.log(`⏰ Timeout automático em ${this.timeoutDurationMinutes} minutos`);
-            
-            // Enviar atualização imediatamente
-            this.sendStatusUpdate();
-        } else {
-            console.log(`⚠️  Comando de reserva ignorado - status atual: ${this.currentStatus}`);
-        }
-    }
-    
-    executeReleaseCommand() {
-        if (this.currentStatus === 'RESERVED') {
-            this.currentStatus = 'FREE';
-            this.reservedAt = null;
-            
-            // Cancelar timeout se existir
-            if (this.timeoutTimer) {
-                clearTimeout(this.timeoutTimer);
-                this.timeoutTimer = null;
-            }
-            
-            console.log(`🔓 Recurso LIBERADO às ${new Date().toLocaleString()}`);
-            
-            // Enviar atualização imediatamente
-            this.sendStatusUpdate();
-        } else {
-            console.log(`⚠️  Comando de liberação ignorado - status atual: ${this.currentStatus}`);
-        }
-    }
-    
-    checkAutoRelease() {
-        // Só verifica liberação automática se estiver reservado e habilitado
-        if (!this.autoReleaseEnabled || this.currentStatus !== 'RESERVED' || !this.reservedAt) {
-            return;
+            console.error(`❌ Erro ao notificar auto-liberação: ${error.message}`);
         }
         
-        // Verificar se já passou o tempo mínimo desde a reserva
-        const minutesSinceReserved = (new Date() - this.reservedAt) / (1000 * 60);
-        if (minutesSinceReserved < this.autoReleaseMinMinutes) {
-            return;
-        }
-        
-        // Gerar número aleatório para verificar se deve liberar
-        const randomValue = Math.random();
-        
-        if (randomValue <= this.autoReleaseProbability) {
-            console.log(`🎲 LIBERAÇÃO AUTOMÁTICA! (${(randomValue * 100).toFixed(1)}% ≤ ${(this.autoReleaseProbability * 100).toFixed(1)}%)`);
-            console.log(`   Recurso estava reservado há ${minutesSinceReserved.toFixed(1)} minutos`);
-            
-            // Liberar o recurso
-            this.currentStatus = 'FREE';
-            this.reservedAt = null;
-            
-            // Cancelar timeout se existir
-            if (this.timeoutTimer) {
-                clearTimeout(this.timeoutTimer);
-                this.timeoutTimer = null;
-            }
-            
-            // Enviar atualização imediatamente
-            this.sendStatusUpdate();
-        } else {
-            console.log(`🎲 Verificação de liberação: ${(randomValue * 100).toFixed(1)}% > ${(this.autoReleaseProbability * 100).toFixed(1)}% - mantendo reservado`);
-        }
+        // Enviar dados atualizados imediatamente
+        this.sendDeviceData();
     }
+
+
     
-    setAutoTimeout() {
-        // Cancelar timeout anterior se existir
-        if (this.timeoutTimer) {
-            clearTimeout(this.timeoutTimer);
-        }
         
-        // Configurar novo timeout
-        const timeoutMs = this.timeoutDurationMinutes * 60 * 1000;
-        
-        this.timeoutTimer = setTimeout(() => {
-            console.log(`⏰ TIMEOUT AUTOMÁTICO! Liberando recurso após ${this.timeoutDurationMinutes} minutos`);
-            this.currentStatus = 'FREE';
-            this.reservedAt = null;
-            this.timeoutTimer = null;
-            
-            // Enviar atualização imediatamente
-            this.sendStatusUpdate();
-        }, timeoutMs);
-    }
-    
     // Métodos auxiliares
     getCurrentStatus() {
         return {
+            resourceId: this.resourceId,
             status: this.currentStatus,
             reservedAt: this.reservedAt,
-            timeoutInMinutes: this.timeoutDurationMinutes
+            predictedEndTime: this.predictedEndTime,
+            isFirstConnection: this.isFirstConnection
         };
     }
     
-    forceStatus(newStatus) {
-        const oldStatus = this.currentStatus;
-        this.currentStatus = newStatus;
+    // Função para debug e monitoramento
+    printConfig() {
+        console.log('📋 CONFIGURAÇÕES DO DISPOSITIVO:');
+        console.log(`   Resource ID: ${this.resourceId}`);
+        console.log(`   Backend URL: ${this.backendUrl}`);
+        console.log(`   Porto: ${this.port}`);
+        console.log(`   Status Atual: ${this.currentStatus}`);
+        console.log(`   Timeout: ${this.timeoutDurationMinutes} minutos`);
+        console.log(`   Primeira Conexão: ${this.isFirstConnection ? 'sim' : 'não'}`);
         
-        if (newStatus === 'RESERVED') {
-            this.reservedAt = new Date();
-            this.setAutoTimeout();
-        } else {
-            this.reservedAt = null;
-            if (this.timeoutTimer) {
-                clearTimeout(this.timeoutTimer);
-                this.timeoutTimer = null;
-            }
+        if (this.reservedAt) {
+            console.log(`   Reservado desde: ${this.reservedAt.toLocaleString()}`);
         }
         
-        console.log(`🔄 Status forçado: ${oldStatus} → ${newStatus}`);
-        
-        // Enviar atualização imediatamente
-        this.sendStatusUpdate();
+        if (this.predictedEndTime) {
+            console.log(`   Liberação prevista: ${this.predictedEndTime.toLocaleString()}`);
+        }
     }
 }
 

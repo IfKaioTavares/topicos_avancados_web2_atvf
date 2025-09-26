@@ -43,8 +43,35 @@ const HistoryPage = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleString('pt-BR');
+    try {
+      const date = new Date(dateString);
+      if (Number.isNaN(date.getTime())) return 'Data inválida';
+      return date.toLocaleString('pt-BR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    } catch (error) {
+      console.error('Erro ao formatar data:', error);
+      return 'Data inválida';
+    }
+  };
+
+  // Função para determinar o status baseado nos campos da reserva
+  const getReserveStatus = (reserve) => {
+    if (reserve.active && reserve.endTime === null) {
+      // Se está ativa e não tem endTime, verifica se expirou
+      if (reserve.predictedEndTime && new Date(reserve.predictedEndTime) < new Date()) {
+        return 'EXPIRED';
+      }
+      return 'ACTIVE';
+    } else if (reserve.endTime !== null) {
+      return 'RELEASED';
+    }
+    return 'CANCELLED';
   };
 
   const statusConfig = {
@@ -54,7 +81,8 @@ const HistoryPage = () => {
     CANCELLED: { label: 'Cancelada', className: 'chip chip--danger' },
   };
 
-  const getStatusChip = (status) => {
+  const getStatusChip = (reserve) => {
+    const status = getReserveStatus(reserve);
     const config = statusConfig[status] || { label: status, className: 'chip' };
     return <span className={config.className}>{config.label}</span>;
   };
@@ -137,7 +165,7 @@ const HistoryPage = () => {
             <article className="surface surface--interactive stat-card">
               <span className="stat-card__label">Ativas nesta página</span>
               <div className="stat-card__value">
-                {reserves.filter((reserve) => reserve.status === 'ACTIVE').length}
+                {reserves.filter((reserve) => getReserveStatus(reserve) === 'ACTIVE').length}
               </div>
               <span className="support-text">
                 Reservas ainda em andamento entre os resultados exibidos.
@@ -161,7 +189,8 @@ const HistoryPage = () => {
             </div>
           ) : (
             reserves.map((reserve) => {
-              const isActive = reserve.status === 'ACTIVE';
+              const reserveStatus = getReserveStatus(reserve);
+              const isActive = reserveStatus === 'ACTIVE';
               const iconColor = isActive ? '#16a34a' : '#94a3b8';
 
               return (
@@ -190,29 +219,29 @@ const HistoryPage = () => {
                           <h3 className="card-header__title" style={{ fontSize: '1.05rem' }}>
                             {reserve.resourceName || `Recurso ${reserve.resourceId}`}
                           </h3>
-                          {getStatusChip(reserve.status)}
+                          {getStatusChip(reserve)}
                         </div>
                         <span className="support-text">Reserva #{reserve.id}</span>
                       </div>
                     </div>
                     <span className="support-text" style={{ fontWeight: 600 }}>
-                      Criada em {formatDate(reserve.createdAt)}
+                      Criada em {formatDate(reserve.startTime)}
                     </span>
                   </div>
 
                   <div className="grid grid--cols-2" style={{ gap: '0.75rem' }}>
-                    {reserve.endedAt && (
+                    {reserve.endTime && (
                       <div className="flex" style={{ alignItems: 'center', gap: '0.45rem' }}>
                         <Clock size={16} color="#2563eb" />
                         <span className="support-text">
-                          Duração: {calculateDuration(reserve.createdAt, reserve.endedAt)}
+                          Duração: {calculateDuration(reserve.startTime, reserve.endTime)}
                         </span>
                       </div>
                     )}
-                    {reserve.expiresAt && reserve.status === 'ACTIVE' && (
+                    {reserve.predictedEndTime && reserve.active && (
                       <div className="flex" style={{ alignItems: 'center', gap: '0.45rem' }}>
                         <Clock size={16} color="#b45309" />
-                        <span className="support-text">Expira: {formatDate(reserve.expiresAt)}</span>
+                        <span className="support-text">Expira: {formatDate(reserve.predictedEndTime)}</span>
                       </div>
                     )}
                     <div className="flex" style={{ alignItems: 'center', gap: '0.45rem' }}>
@@ -221,7 +250,7 @@ const HistoryPage = () => {
                     </div>
                     <div className="flex" style={{ alignItems: 'center', gap: '0.45rem' }}>
                       <History size={16} color="#64748b" />
-                      <span className="support-text">Status atual: {statusConfig[reserve.status]?.label || reserve.status}</span>
+                      <span className="support-text">Status atual: {statusConfig[getReserveStatus(reserve)]?.label || getReserveStatus(reserve)}</span>
                     </div>
                   </div>
                 </article>

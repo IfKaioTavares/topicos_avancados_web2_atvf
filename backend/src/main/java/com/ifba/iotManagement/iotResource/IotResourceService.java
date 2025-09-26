@@ -8,6 +8,8 @@ import com.ifba.iotManagement.iotResource.dto.IotResourceDto;
 import com.ifba.iotManagement.iotResource.dto.UpdateResourceStatusRequest;
 import com.ifba.iotManagement.shared.exceptions.ResourceAlreadyExistsException;
 import com.ifba.iotManagement.shared.exceptions.ResourceNotFoundException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,9 +54,27 @@ public class IotResourceService {
     }
 
     public List<IotResourceDto> findAll() {
-        return iotResourceRepository.findAllByDeletedIsFalseAndLockedForAdminIsFalse().stream()
+        List<IotResourceEntity> resources;
+        
+        // Admin pode ver todos os recursos, usuário regular apenas os não-admin
+        if (isCurrentUserAdmin()) {
+            resources = iotResourceRepository.findAllByDeletedIsFalse();
+        } else {
+            resources = iotResourceRepository.findAllByDeletedIsFalseAndLockedForAdminIsFalse();
+        }
+        
+        return resources.stream()
                 .map(IotResourceDto::fromEntity)
                 .toList();
+    }
+    
+    private boolean isCurrentUserAdmin() {
+        return SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getAuthorities()
+                .stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(role -> role.equals("ROLE_ADMIN"));
     }
 
     public IotResourceDto findById(UUID id) {

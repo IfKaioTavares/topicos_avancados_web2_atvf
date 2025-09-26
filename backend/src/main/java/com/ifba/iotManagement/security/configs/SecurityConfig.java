@@ -57,6 +57,7 @@ public class SecurityConfig {
                     .requestMatchers(createPath("/auth/**")).permitAll()
                     .requestMatchers(docsAuth).permitAll()
                     .requestMatchers(HttpMethod.POST, createPath("/users")).permitAll()
+                    .requestMatchers(createPath("/devices/**")).permitAll() // Permitir acesso aos dispositivos IoT
                     .anyRequest().authenticated()
             ).sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .oauth2ResourceServer(conf -> conf.jwt(jwt -> jwt

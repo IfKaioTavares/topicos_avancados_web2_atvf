@@ -1,6 +1,8 @@
 package com.ifba.iotManagement.device;
 
+import com.ifba.iotManagement.device.dto.DeviceAutoReleaseDto;
 import com.ifba.iotManagement.device.dto.DeviceCommandDto;
+import com.ifba.iotManagement.device.dto.DeviceResourceStatusDto;
 import com.ifba.iotManagement.device.dto.DeviceStatusUpdateDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -66,5 +68,36 @@ public class DeviceController {
     public ResponseEntity<DeviceCommandDto> getReleaseCommand(@PathVariable String resourceId) {
         DeviceCommandDto command = deviceService.generateReleaseCommand(resourceId);
         return ResponseEntity.ok(command);
+    }
+    
+    @GetMapping("/{resourceId}/status")
+    @SecurityRequirements(value = {}) // Sem autenticação para dispositivos IoT
+    @Operation(
+            summary = "Obter status atual do recurso",
+            description = "Permite ao dispositivo consultar o status atual do recurso no backend"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Status obtido com sucesso"),
+            @ApiResponse(responseCode = "404", description = "Recurso não encontrado")
+    })
+    public ResponseEntity<?> getResourceStatus(@PathVariable String resourceId) {
+        return ResponseEntity.ok(deviceService.getResourceStatus(resourceId));
+    }
+    
+    @PostMapping("/{resourceId}/auto-release")
+    @SecurityRequirements(value = {}) // Sem autenticação para dispositivos IoT
+    @Operation(
+            summary = "Notificar auto-liberação",
+            description = "Recebe notificação quando dispositivo executa auto-liberação por timeout"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Auto-liberação processada com sucesso"),
+            @ApiResponse(responseCode = "404", description = "Recurso não encontrado")
+    })
+    public ResponseEntity<Void> notifyAutoRelease(
+            @PathVariable String resourceId,
+            @Valid @RequestBody DeviceAutoReleaseDto autoReleaseData) {
+        deviceService.processAutoRelease(resourceId, autoReleaseData);
+        return ResponseEntity.ok().build();
     }
 }

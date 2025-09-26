@@ -73,4 +73,8 @@ public interface IotResourceReserveRepository extends BaseRepository<IotResource
     Optional<IotResourceReserveEntity> findTopByIotResourceIdAndDeletedIsFalseOrderByCreatedAtDesc(Long resourceId);
     
     long countByIotResourceIdAndCreatedAtAfterAndDeletedIsFalse(Long resourceId, Instant createdAt);
+    
+    long countByCreatedAtBetweenAndDeletedIsFalse(Instant start, Instant end);
+    
+    List<IotResourceReserveEntity> findByEndTimeIsNotNullAndDeletedIsFalse();
 }

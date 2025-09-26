@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { User, Mail, Lock, Eye, EyeOff, UserPlus } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, UserPlus } from 'lucide-react';
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
+    username: '',
     password: '',
     confirmPassword: ''
   });
@@ -28,8 +27,13 @@ const Register = () => {
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres');
+    if (formData.username.length < 5) {
+      setError('O username deve ter pelo menos 5 caracteres');
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setError('A senha deve ter pelo menos 8 caracteres');
       return;
     }
 
@@ -37,8 +41,7 @@ const Register = () => {
 
     try {
       const userData = {
-        name: formData.name,
-        email: formData.email,
+        username: formData.username,
         password: formData.password
       };
 
@@ -96,7 +99,7 @@ const Register = () => {
 
           <div className="stack" style={{ gap: '1rem' }}>
             <div className="form-control">
-              <label htmlFor="name">Nome completo</label>
+              <label htmlFor="username">Nome de usuário</label>
               <div style={{ position: 'relative' }}>
                 <User
                   size={18}
@@ -109,41 +112,14 @@ const Register = () => {
                   }}
                 />
                 <input
-                  id="name"
-                  name="name"
+                  id="username"
+                  name="username"
                   type="text"
                   required
-                  value={formData.name}
+                  value={formData.username}
                   onChange={handleChange}
                   className="input"
-                  placeholder="Digite seu nome completo"
-                  style={{ paddingLeft: '2.8rem' }}
-                />
-              </div>
-            </div>
-
-            <div className="form-control">
-              <label htmlFor="email">Email institucional</label>
-              <div style={{ position: 'relative' }}>
-                <Mail
-                  size={18}
-                  style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '0.85rem',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--color-muted)',
-                  }}
-                />
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="input"
-                  placeholder="nome@instituicao.edu"
+                  placeholder="Digite seu nome de usuário (mínimo 5 caracteres)"
                   style={{ paddingLeft: '2.8rem' }}
                 />
               </div>
@@ -170,7 +146,7 @@ const Register = () => {
                   value={formData.password}
                   onChange={handleChange}
                   className="input"
-                  placeholder="Crie uma senha (mínimo 6 caracteres)"
+                  placeholder="Crie uma senha (mínimo 8 caracteres)"
                   style={{ paddingLeft: '2.8rem', paddingRight: '2.8rem' }}
                 />
                 <button

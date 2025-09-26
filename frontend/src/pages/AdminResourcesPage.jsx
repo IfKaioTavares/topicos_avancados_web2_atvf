@@ -35,7 +35,6 @@ const initialFormState = {
   status: 'INACTIVE',
   timeoutUsageInMinutes: 60,
   lockedForAdmin: false,
-  description: '',
 };
 
 const AdminResourcesPage = () => {
@@ -111,7 +110,6 @@ const AdminResourcesPage = () => {
       status: formData.status,
       timeoutUsageInMinutes: Number(formData.timeoutUsageInMinutes) || 60,
       lockedForAdmin: Boolean(formData.lockedForAdmin),
-      description: formData.description?.trim() || null,
     };
 
     if (!payload.resourceId || !payload.name) {
@@ -123,7 +121,7 @@ const AdminResourcesPage = () => {
       setSubmitting(true);
       await resourceService.createResource(payload);
       await loadResources();
-      toggleModal();
+      resetForm();
     } catch (err) {
       const fallbackMessage = 'Erro ao criar o recurso. Verifique os dados e tente novamente.';
       const serverMessage = err?.response?.data?.message;
@@ -230,9 +228,6 @@ const AdminResourcesPage = () => {
                         <td className="table-cell--mono">{resource.resourceId}</td>
                         <td>
                           <div className="heading-sm">{resource.name}</div>
-                          {resource.description && (
-                            <div className="support-text">{resource.description}</div>
-                          )}
                         </td>
                         <td>{formatType(resource.type)}</td>
                         <td>
@@ -269,48 +264,55 @@ const AdminResourcesPage = () => {
       </main>
 
       {showModal && (
-        <div className="modal" role="dialog" aria-modal="true">
-          <div className="modal__content">
-            <header className="modal__header">
-              <div>
-                <h2 className="modal__title">Cadastrar novo recurso</h2>
-                <p className="modal__subtitle">
-                  Informe os dados obrigatórios para disponibilizar um novo recurso no sistema.
-                </p>
-              </div>
-              <button type="button" className="icon-button" onClick={toggleModal} aria-label="Fechar modal">
-                <X size={18} />
-              </button>
-            </header>
+        <div className="modal-overlay" role="presentation">
+          <div className="modal" role="dialog" aria-modal="true">
+            <div className="modal__content">
+              <header className="modal__header">
+                <div>
+                  <h2 className="modal__title">Cadastrar novo recurso</h2>
+                  <p className="modal__subtitle">
+                    Informe os dados obrigatórios para disponibilizar um novo recurso no sistema.
+                  </p>
+                </div>
+                <button type="button" className="icon-button" onClick={toggleModal} aria-label="Fechar modal">
+                  <X size={18} />
+                </button>
+              </header>
 
-            <form className="form" onSubmit={handleSubmit}>
-              <div className="form__grid">
-                <label className="form__field">
-                  <span className="form__label">Identificador *</span>
+            <form className="resource-form" onSubmit={handleSubmit}>
+              <div className="resource-form__grid">
+                <label className="resource-form__field">
+                  <span className="resource-form__label">Identificador *</span>
                   <input
                     required
                     type="text"
+                    className="resource-form__control"
                     value={formData.resourceId}
                     onChange={handleChange('resourceId')}
                     placeholder="Ex.: SALA-101"
                   />
-                  <span className="form__hint">Deve ser único e seguirá nas reservas.</span>
+                  <span className="resource-form__hint">Identificador único usado nas reservas.</span>
                 </label>
 
-                <label className="form__field">
-                  <span className="form__label">Nome *</span>
+                <label className="resource-form__field">
+                  <span className="resource-form__label">Nome *</span>
                   <input
                     required
                     type="text"
+                    className="resource-form__control"
                     value={formData.name}
                     onChange={handleChange('name')}
                     placeholder="Nome descritivo"
                   />
                 </label>
 
-                <label className="form__field">
-                  <span className="form__label">Tipo</span>
-                  <select value={formData.type} onChange={handleChange('type')}>
+                <label className="resource-form__field">
+                  <span className="resource-form__label">Tipo</span>
+                  <select
+                    className="resource-form__control"
+                    value={formData.type}
+                    onChange={handleChange('type')}
+                  >
                     {typeOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -319,9 +321,13 @@ const AdminResourcesPage = () => {
                   </select>
                 </label>
 
-                <label className="form__field">
-                  <span className="form__label">Status inicial</span>
-                  <select value={formData.status} onChange={handleChange('status')}>
+                <label className="resource-form__field">
+                  <span className="resource-form__label">Status inicial</span>
+                  <select
+                    className="resource-form__control"
+                    value={formData.status}
+                    onChange={handleChange('status')}
+                  >
                     {statusOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -330,41 +336,35 @@ const AdminResourcesPage = () => {
                   </select>
                 </label>
 
-                <label className="form__field">
-                  <span className="form__label">Tempo máximo de uso (min)</span>
+                <label className="resource-form__field">
+                  <span className="resource-form__label">Tempo máximo de uso (min)</span>
                   <input
                     type="number"
-                    min={5}
-                    step={5}
+                    min={1}
+                    step={1}
+                    className="resource-form__control"
                     value={formData.timeoutUsageInMinutes}
                     onChange={handleChange('timeoutUsageInMinutes')}
                   />
+                  <span className="resource-form__hint">Defina o tempo limite para cada reserva.</span>
                 </label>
 
-                <label className="form__field form__field--checkbox">
+                <label className="resource-form__checkbox resource-form__field--full">
                   <input
                     type="checkbox"
                     checked={formData.lockedForAdmin}
                     onChange={handleChange('lockedForAdmin')}
                   />
-                  <span className="form__label">Bloqueado para administradores</span>
+                  <div>
+                    <span className="resource-form__label">Visível apenas para administradores</span>
+                    <span className="resource-form__hint">
+                      Ative para restringir o recurso a contas administrativas.
+                    </span>
+                  </div>
                 </label>
               </div>
 
-              <label className="form__field">
-                <span className="form__label">Descrição (opcional)</span>
-                <textarea
-                  rows={3}
-                  value={formData.description}
-                  onChange={handleChange('description')}
-                  placeholder="Detalhes adicionais sobre o recurso"
-                />
-              </label>
-
-              <div className="form__footer">
-                <button type="button" className="btn btn--subtle" onClick={toggleModal}>
-                  Cancelar
-                </button>
+              <div className="resource-form__footer">
                 <button type="submit" className="btn btn--primary" disabled={submitting}>
                   <Save size={18} />
                   <span>{submitting ? 'Salvando...' : 'Salvar recurso'}</span>
@@ -373,6 +373,7 @@ const AdminResourcesPage = () => {
             </form>
           </div>
         </div>
+      </div>
       )}
     </div>
   );

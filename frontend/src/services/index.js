@@ -85,7 +85,7 @@ export const reserveService = {
 
   // Liberar reserva
   async releaseReserve(reserveId) {
-    const response = await API.delete(`/reserves/${reserveId}`);
+    const response = await API.put(`/reserves/${reserveId}/release`);
     return response.data;
   }
 };

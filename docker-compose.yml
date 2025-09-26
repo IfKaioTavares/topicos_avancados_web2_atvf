@@ -10,5 +10,38 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db_postgres:5432/iot_db?stringtype=unspecified
+      SPRING_DATASOURCE_USERNAME: iot_user
+      SPRING_DATASOURCE_PASSWORD: iot_pass
+      SPRING_JPA_SHOW_SQL: "false"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db_postgres
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+  device-simulator:
+    build: ./device-simulator
+    restart: unless-stopped
+    environment:
+      RESOURCE_ID: sala_1
+      BACKEND_URL: http://backend:8080
+      TIMEOUT_DURATION_MINUTES: 5
+      PORT: 3000
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
 volumes:
   postgres_data:

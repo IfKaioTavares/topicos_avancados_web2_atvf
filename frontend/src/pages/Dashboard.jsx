@@ -50,7 +50,19 @@ const Dashboard = () => {
 
   const handleReserve = async (resourceId) => {
     try {
-      await reserveService.createReserve({ resourceId });
+      // Encontrar o recurso para obter o timeout
+      const resource = resources.find(r => r.id === resourceId);
+      const timeoutMinutes = resource?.timeoutUsageInMinutes || 60; // Default 60 minutos
+      
+      // Usar Instant format para compatibilidade com o backend Java
+      const now = new Date();
+      const endTime = new Date(now.getTime() + timeoutMinutes * 60 * 1000);
+      
+      await reserveService.createReserve({ 
+        resourceId, 
+        startTime: now.toISOString(), 
+        predictedEndTime: endTime.toISOString()
+      });
       await loadDashboardData(); // Recarregar dados
     } catch (error) {
       console.error('Erro ao fazer reserva:', error);
@@ -82,7 +94,7 @@ const Dashboard = () => {
   // Estatísticas rápidas
   const totalResources = resources.length;
   const availableResources = resources.filter(r => r.status === 'FREE').length;
-  const occupiedResources = resources.filter(r => r.status === 'OCCUPIED').length;
+  const occupiedResources = resources.filter(r => r.status === 'RESERVED').length; // Corrigido: backend usa RESERVED
   const myActiveReservesCount = activeReserves.length;
 
   const stats = [

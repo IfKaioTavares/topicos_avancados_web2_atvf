@@ -15,6 +15,10 @@ public record DeviceStatusUpdateDto(
         @NotNull(message = "Timestamp cannot be null")
         Instant timestamp,
         
-        Boolean firstConnection // Flag para indicar primeira conexão do dispositivo
+        Boolean firstConnection, // Flag para indicar primeira conexão do dispositivo
+        
+        Instant reservedAt, // Quando foi reservado (do dispositivo)
+        
+        Instant predictedEndTime // Tempo previsto de liberação (do dispositivo)
 ) {
 }

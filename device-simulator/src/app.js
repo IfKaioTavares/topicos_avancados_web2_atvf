@@ -14,18 +14,12 @@ for (const envVar of requiredEnvVars) {
     }
 }
 
-// Configurações do dispositivo
+// Configurações do dispositivo - apenas variáveis essenciais
 const config = {
     resourceId: process.env.RESOURCE_ID,
-    timeoutDurationMinutes: parseInt(process.env.TIMEOUT_DURATION_MINUTES) || 30,
+    timeoutDurationMinutes: parseInt(process.env.TIMEOUT_DURATION_MINUTES) || 5,
     backendUrl: process.env.BACKEND_URL || 'http://localhost:8080',
-    statusIntervalSeconds: parseInt(process.env.STATUS_INTERVAL_SECONDS) || 30,
-    port: parseInt(process.env.PORT) || 3000,
-    
-    // Configurações de liberação automática
-    autoReleaseEnabled: process.env.AUTO_RELEASE_ENABLED === 'true',
-    autoReleaseProbability: parseFloat(process.env.AUTO_RELEASE_PROBABILITY) || 0.05,
-    autoReleaseMinMinutes: parseInt(process.env.AUTO_RELEASE_MIN_MINUTES) || 5
+    port: parseInt(process.env.PORT) || 3000
 };
 
 console.log('🚀 Iniciando Simulador IoT...');
@@ -33,9 +27,7 @@ console.log(`📋 Configurações:
   - Resource ID: ${config.resourceId}
   - Timeout Duration: ${config.timeoutDurationMinutes} minutos
   - Backend URL: ${config.backendUrl}
-  - Status Interval: ${config.statusIntervalSeconds} segundos
   - Port: ${config.port}
-  - Auto Release: ${config.autoReleaseEnabled ? `${(config.autoReleaseProbability * 100).toFixed(1)}% (min: ${config.autoReleaseMinMinutes}min)` : 'Desabilitado'}
 `);
 
 // Criar instância do simulador

@@ -3,11 +3,15 @@ package com.ifba.iotManagement.device;
 import com.ifba.iotManagement.audit.AuditAction;
 import com.ifba.iotManagement.audit.AuditResult;
 import com.ifba.iotManagement.audit.AuditService;
+import com.ifba.iotManagement.device.dto.DeviceAutoReleaseDto;
 import com.ifba.iotManagement.device.dto.DeviceCommandDto;
+import com.ifba.iotManagement.device.dto.DeviceResourceStatusDto;
 import com.ifba.iotManagement.device.dto.DeviceStatusUpdateDto;
 import com.ifba.iotManagement.iotResource.IotResourceEntity;
 import com.ifba.iotManagement.iotResource.IotResourceRepository;
 import com.ifba.iotManagement.iotResource.IotResourceStatus;
+import com.ifba.iotManagement.iotResource.reserve.IotResourceReserveEntity;
+import com.ifba.iotManagement.iotResource.reserve.IotResourceReserveRepository;
 import com.ifba.iotManagement.shared.exceptions.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,10 +24,14 @@ public class DeviceService {
     private static final Logger logger = LoggerFactory.getLogger(DeviceService.class);
     
     private final IotResourceRepository resourceRepository;
+    private final IotResourceReserveRepository reserveRepository;
     private final AuditService auditService;
     
-    public DeviceService(IotResourceRepository resourceRepository, AuditService auditService) {
+    public DeviceService(IotResourceRepository resourceRepository, 
+                        IotResourceReserveRepository reserveRepository,
+                        AuditService auditService) {
         this.resourceRepository = resourceRepository;
+        this.reserveRepository = reserveRepository;
         this.auditService = auditService;
     }
     
@@ -199,5 +207,93 @@ public class DeviceService {
             case "INDISPONIVEL", "UNAVAILABLE", "INACTIVE", "OFFLINE" -> IotResourceStatus.INACTIVE;
             default -> throw new IllegalArgumentException("Unknown device status: " + deviceStatus);
         };
+    }
+    
+    public DeviceResourceStatusDto getResourceStatus(String resourceId) {
+        try {
+            IotResourceEntity resource = resourceRepository
+                    .findByResourceIdAndDeletedIsFalse(resourceId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Resource not found with resourceId: " + resourceId));
+            
+            // Buscar detalhes da reserva se o recurso estiver reservado
+            DeviceResourceStatusDto.ReserveDetailsDto reserveDetails = null;
+            if (resource.getStatus() == IotResourceStatus.RESERVED) {
+                var activeReserves = reserveRepository.findByIotResourceIdAndActiveIsTrueAndDeletedIsFalse(resource.getId());
+                if (!activeReserves.isEmpty()) {
+                    var currentReserve = activeReserves.get(0); // Pegar a primeira reserva ativa
+                    reserveDetails = new DeviceResourceStatusDto.ReserveDetailsDto(
+                            currentReserve.getUser().getUsername(),
+                            currentReserve.getStartTime(),
+                            currentReserve.getPredictedEndTime()
+                    );
+                }
+            }
+            
+            return new DeviceResourceStatusDto(
+                    resource.getResourceId(),
+                    resource.getStatus().name(),
+                    reserveDetails
+            );
+            
+        } catch (Exception e) {
+            logger.error("Error getting resource status for device {}", resourceId, e);
+            throw e;
+        }
+    }
+    
+    @Transactional
+    public void processAutoRelease(String resourceId, DeviceAutoReleaseDto autoReleaseData) {
+        try {
+            IotResourceEntity resource = resourceRepository
+                    .findByResourceIdAndDeletedIsFalse(resourceId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Resource not found with resourceId: " + resourceId));
+            
+            // Verificar se recurso está realmente reservado
+            if (resource.getStatus() != IotResourceStatus.RESERVED) {
+                logger.warn("Auto-release ignored for resource {} - current status: {}", 
+                        resourceId, resource.getStatus());
+                return;
+            }
+            
+            // Liberar o recurso
+            resource.updateStatus(IotResourceStatus.FREE);
+            
+            // Se há reserva ativa, finalizá-la
+            var activeReserves = reserveRepository.findByIotResourceIdAndActiveIsTrueAndDeletedIsFalse(resource.getId());
+            for (IotResourceReserveEntity reserve : activeReserves) {
+                reserve.finishReserve();
+                reserveRepository.save(reserve);
+            }
+            
+            resourceRepository.save(resource);
+            
+            // Log de auditoria
+            auditService.logSystemAction(
+                    AuditAction.DEVICE_AUTO_RELEASE,
+                    resource.getPublicId(),
+                    resource.getName(),
+                    AuditResult.SUCCESS,
+                    String.format("Device auto-released resource at %s (reason: %s)", 
+                            autoReleaseData.timestamp(), autoReleaseData.reason())
+            );
+            
+            logger.info("Device auto-released resource {} (reason: {})", 
+                    resourceId, autoReleaseData.reason());
+            
+        } catch (Exception e) {
+            // Log erro de auditoria
+            auditService.logSystemAction(
+                    AuditAction.DEVICE_AUTO_RELEASE,
+                    null,
+                    resourceId,
+                    AuditResult.FAILURE,
+                    "Failed to process auto-release: " + e.getMessage()
+            );
+            
+            logger.error("Error processing auto-release for resource {}", resourceId, e);
+            throw e;
+        }
     }
 }
