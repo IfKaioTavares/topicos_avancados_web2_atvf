@@ -167,7 +167,7 @@ graph TD
 
 **Descrição do Funcionamento:**
 
--   **Frontend:** É uma Single-Page Application (SPA) desenvolvida com **React** e estilizada com **Tailwind CSS**. Ela é responsável por toda a interface do usuário, adaptando as funcionalidades visíveis com base no papel (role) do usuário autenticado (Usuário ou Administrador). Após o build, os arquivos estáticos são servidos por um container **Nginx**.
+-   **Frontend:** É uma Single-Page Application (SPA) desenvolvida com **React** e estilizada com **CSS**. Ela é responsável por toda a interface do usuário, adaptando as funcionalidades visíveis com base no papel (role) do usuário autenticado (Usuário ou Administrador). Após o build, os arquivos estáticos são servidos por um container **Nginx**.
 -   **Backend:** É uma API RESTful desenvolvida com **Java** e **Spring Boot**. Ele centraliza todas as regras de negócio: autenticação e autorização de usuários, gerenciamento de recursos, lógica de reservas, auditoria e coleta de estatísticas.
 -   **Banco de Dados:** Utiliza **PostgreSQL** para persistir todos os dados da aplicação.
 -   **Device Simulator:** É um serviço em **Node.js** que simula um dispositivo IoT. Cada instância representa um dispositivo físico. **A adição de um novo dispositivo ao ecossistema é uma tarefa manual de infraestrutura**, que consiste em adicionar uma nova definição de serviço para o simulador no arquivo `docker-compose.yml`.
