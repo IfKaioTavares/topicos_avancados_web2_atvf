@@ -260,6 +260,8 @@ O sistema foi configurado para gerar logs detalhados, tanto a nível de aplicaç
 5.  **Acesse a aplicação:**
     -   O **Frontend** estará disponível em `http://localhost:5173`.
     -   A documentação da **API Backend** (Swagger UI) estará disponível em `http://localhost:8080/swagger-ui.html`.
+    *Documentação da API (Swagger UI)*
+    ![Documentação da API](imgs/documentacao_api.png)
 
 **Nota sobre a Simulação:** Para adicionar um novo dispositivo IoT simulado, é necessário editar o arquivo `docker-compose.yml` manualmente. Copie e cole a definição de um serviço `device-simulator` existente, alterando o nome do serviço (ex: `device-simulator-3`) e o mapeamento de portas para evitar conflitos (ex: `"8083:3000"`). Após salvar o arquivo, execute `docker-compose up -d --build` novamente para iniciar o novo simulador.
 
